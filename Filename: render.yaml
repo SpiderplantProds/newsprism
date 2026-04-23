@@ -1,0 +1,61 @@
+services:
+  # PostgreSQL Database
+  - type: pserv
+    name: newsprism-db
+    runtime: image
+    image:
+      image: postgres:15-alpine
+    envVars:
+      - key: POSTGRES_DB
+        value: newsprism
+      - key: POSTGRES_USER
+        value: newsprism
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+    disk:
+      name: data
+      mountPath: /var/lib/postgresql/data
+      sizeGB: 1
+
+  # Redis Cache
+  - type: pserv
+    name: newsprism-redis
+    runtime: image
+    image:
+      image: redis:7-alpine
+    envVars:
+      - key: REDIS_PASSWORD
+        generateValue: true
+
+  # Backend API Server
+  - type: web
+    name: newsprism-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DATABASE_URL
+        fromService:
+          name: newsprism-db
+          type: pserv
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          name: newsprism-redis
+          type: pserv
+          property: connectionString
+      - key: PYTHON_VERSION
+        value: 3.11.0
+
+  # Frontend Website
+  - type: web
+    name: newsprism-frontend
+    runtime: static
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: ./frontend/out
+    envVars:
+      - key: NEXT_PUBLIC_API_URL
+        fromService:
+          name: newsprism-api
+          type: web
+          property: host

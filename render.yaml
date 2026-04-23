@@ -2,6 +2,7 @@ services:
   - type: pserv
     name: newsprism-db
     runtime: image
+    repo: https://github.com/SpiderplantProds/newsprism
     image:
       image: postgres:15-alpine
     envVars:
@@ -16,16 +17,11 @@ services:
       mountPath: /var/lib/postgresql/data
       sizeGB: 1
 
-  - type: pserv
-    name: newsprism-redis
-    runtime: image
-    image:
-      image: redis:7-alpine
-
   - type: web
     name: newsprism-api
     runtime: python
-    buildCommand: pip install -r requirements.txt && python -m spacy download en_core_web_sm
+    repo: https://github.com/SpiderplantProds/newsprism
+    buildCommand: pip install -r requirements.txt
     startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
     envVars:
       - key: DATABASE_URL
@@ -35,14 +31,4 @@ services:
           property: connectionString
       - key: PYTHON_VERSION
         value: 3.11.0
-
-  - type: static
-    name: newsprism-frontend
-    buildCommand: cd frontend && npm install && npm run build
-    staticPublishPath: frontend/out
-    envVars:
-      - key: NEXT_PUBLIC_API_URL
-        fromService:
-          name: newsprism-api
-          type: web
-          property: host
+        
